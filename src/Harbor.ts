@@ -10,6 +10,7 @@ import { Transaction }         from '@mysten/sui/transactions'
 import { SuiClient }           from '@mysten/sui/client'
 import { Vessel }              from './Vessel'
 import { CONTRACTS, toBaseUnits, toCents, USDC_COIN_TYPE } from './config'
+import { withRpcRetry, withTxRetry } from './retry'
 import { ConkError, ConkErrorCode } from './types'
 import type {
   Network,
@@ -37,10 +38,12 @@ export class Harbor {
   // ─── Balance ──────────────────────────────────────────────────────────────
 
   async balance(): Promise<number> {
-    const coins = await this.suiClient.getCoins({
-      owner:    this.state.address,
-      coinType: USDC_COIN_TYPE,
-    })
+    const coins = await withRpcRetry(() =>
+      this.suiClient.getCoins({
+        owner:    this.state.address,
+        coinType: USDC_COIN_TYPE,
+      }),
+    )
 
     const total = coins.data.reduce(
       (sum, c) => sum + BigInt(c.balance),
@@ -90,7 +93,7 @@ export class Harbor {
 
     let digest: string
     try {
-      const result = await this.signAndExecute(tx)
+      const result = await withTxRetry(() => this.signAndExecute(tx))
       digest = result.digest
     } catch (err) {
       throw new ConkError(
@@ -140,11 +143,13 @@ export class Harbor {
     const contracts = CONTRACTS[network]
 
     // Check if Harbor object already exists for this address
-    const objects = await suiClient.getOwnedObjects({
-      owner:   session.address,
-      filter:  { StructType: `${contracts.package}::harbor::Harbor` },
-      options: { showContent: true },
-    })
+    const objects = await withRpcRetry(() =>
+      suiClient.getOwnedObjects({
+        owner:   session.address,
+        filter:  { StructType: `${contracts.package}::harbor::Harbor` },
+        options: { showContent: true },
+      }),
+    )
 
     if (objects.data.length > 0) {
       const obj     = objects.data[0]
