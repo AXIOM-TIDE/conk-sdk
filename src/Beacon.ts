@@ -188,7 +188,7 @@ export class Beacon {
       const harbor = await conk.harbor()
       // Re-use the existing vessel — don't create a new one
       const vessel = await Beacon.loadVessel(harbor, savedState.vesselId)
-      return Beacon.restoreFromState(conk, vessel, savedState)
+      return Beacon.restoreFromState(conk, vessel as any, savedState)
     }
 
     // First time — create harbor + vessel
