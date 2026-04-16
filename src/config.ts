@@ -1,6 +1,6 @@
 /**
  * @axiomtide/conk-sdk — Protocol Configuration
- * Contract addresses, RPC endpoints, and protocol constants.
+ * Synced with apps/conk/src/sui/index.ts — April 15, 2026
  */
 
 import type { Network } from './types'
@@ -9,28 +9,29 @@ import type { Network } from './types'
 
 export const CONTRACTS = {
   mainnet: {
-    package:
-      '0x8cde30c2af7523193689e2f3eaca6dc4fadf6fd486471a6c31b14bc9db5164b2',
-    // Populated once deployed — stub here if testnet differs
-    harbor: '',
-    vessel: '',
-    cast: '',
+    package:  '0x8cde30c2af7523193689e2f3eaca6dc4fadf6fd486471a6c31b14bc9db5164b2',
+    treasury: '0xe0117fba317d2267b8d90adca1fe79eceeec756bcf54edf04cc29ee5306ab32e',
+    abyss:    '0x22d066f6337d68848e389402926b4a10424d9728744efb9e6dd0d0ca1c5921c7',
+    drift:    '0x95520350968d56b3552521d3ea508934517dde94ad30bb43209aa4fc3cec21de',
+    clock:    '0x6',
   },
   testnet: {
-    package: '',
-    harbor: '',
-    vessel: '',
-    cast: '',
+    package:  '',
+    treasury: '',
+    abyss:    '',
+    drift:    '',
+    clock:    '0x6',
   },
   devnet: {
-    package: '',
-    harbor: '',
-    vessel: '',
-    cast: '',
+    package:  '',
+    treasury: '',
+    abyss:    '',
+    drift:    '',
+    clock:    '0x6',
   },
 } as const
 
-// ─── RPC Endpoints ───────────────────────────────────────────────────────────
+// ─── RPC Endpoints ────────────────────────────────────────────────────────────
 
 export const RPC_ENDPOINTS: Record<Network, string> = {
   mainnet: 'https://fullnode.mainnet.sui.io:443',
@@ -40,47 +41,84 @@ export const RPC_ENDPOINTS: Record<Network, string> = {
 
 // ─── Proxy ────────────────────────────────────────────────────────────────────
 
-/**
- * Default Cloudflare Worker proxy for ZK proof generation.
- * Overridable via ConkClientConfig.proxy.
- */
-export const DEFAULT_PROXY =
-  'https://conk-zkproxy-v2.italktonumbers.workers.dev'
+export const DEFAULT_PROXY = 'https://conk-zkproxy-v2.italktonumbers.workers.dev'
 
-// ─── Protocol Constants ───────────────────────────────────────────────────────
+// ─── USDC ─────────────────────────────────────────────────────────────────────
 
-/** USDC coin type on Sui */
-export const USDC_COIN_TYPE =
-  '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN'
+/** Real mainnet USDC type — from apps/conk/src/sui/client.ts */
+export const USDC_TYPE =
+  '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
 
-/** Walrus aggregator endpoint */
-export const WALRUS_AGGREGATOR = 'https://aggregator.walrus-testnet.walrus.space'
-
-/** Walrus publisher endpoint */
-export const WALRUS_PUBLISHER  = 'https://publisher.walrus-testnet.walrus.space'
-
-/** One USDC in base units (6 decimals) */
 export const USDC_DECIMALS = 6
 export const USDC_UNIT     = 1_000_000
 
-/** Convert human-readable USDC to base units */
 export function toBaseUnits(usdc: number): bigint {
   return BigInt(Math.round(usdc * USDC_UNIT))
 }
 
-/** Convert base units to human-readable USDC cents (integer) */
 export function toCents(baseUnits: bigint): number {
   return Number(baseUnits) / (USDC_UNIT / 100)
 }
 
-/** Duration string to epoch offset */
+// ─── Walrus ───────────────────────────────────────────────────────────────────
+
+/** Real production Walrus endpoints — from apps/conk/src/sui/index.ts */
+export const WALRUS_AGGREGATOR = 'https://aggregator.walrus.site'
+export const WALRUS_PUBLISHER  = 'https://publisher.walrus.site'
+
+// ─── Cast modes (matches Move contract u8 enum) ───────────────────────────────
+
+export const CAST_MODE = {
+  OPEN:       0,
+  BURN:       1,
+  EYES_ONLY:  2,
+} as const
+
+// ─── Cast durations (matches Move contract u8 enum) ──────────────────────────
+
+export const CAST_DURATION = {
+  '1h':        0,
+  '24h':       1,
+  '7d':        2,
+  '30d':       3,
+  'permanent': 255,   // max u8 — signals no expiry to the contract
+} as const
+
+export type CastDurationKey = keyof typeof CAST_DURATION
+
 export function durationToEpochs(duration: string): number {
-  const map: Record<string, number> = {
-    '1h':        1,
-    '24h':      24,
-    '7d':      168,
-    '30d':     720,
-    'permanent': 0,  // 0 = no expiry
-  }
-  return map[duration] ?? 24
+  return CAST_DURATION[duration as CastDurationKey] ?? CAST_DURATION['24h']
 }
+
+// ─── Lighthouse types ─────────────────────────────────────────────────────────
+
+/**
+ * Two lighthouse types — mutually exclusive:
+ *
+ *   VIRAL     — earned by read momentum (1M reads / 24h or 500K × 3 tides)
+ *               has expiresAt, shows DecayBadge, resets on each read
+ *
+ *   PERMANENT — deliberately published by creator, no expiry,
+ *               shows PermanentBadge, anchored to a Beacon
+ */
+export const LIGHTHOUSE_TYPE = {
+  VIRAL:     'viral',
+  PERMANENT: 'permanent',
+} as const
+
+export type LighthouseType = typeof LIGHTHOUSE_TYPE[keyof typeof LIGHTHOUSE_TYPE]
+
+// ─── Fee split (matches crossPaywall in client.ts) ───────────────────────────
+
+export const AUTHOR_SHARE   = 0.97   // 97% to creator
+export const TREASURY_SHARE = 0.03   // 3% to protocol
+
+// ─── Siren floor ──────────────────────────────────────────────────────────────
+
+/**
+ * The non-negotiable Abyss floor for every Siren broadcast.
+ * "Sample" tier pays this. "Paid" tier pays this plus the author's price.
+ * The Abyss always gets paid. This is how the network stays alive.
+ */
+export const SIREN_FLOOR_USDC  = 0.001
+export const SIREN_FLOOR_UNITS = 1_000

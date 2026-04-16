@@ -1,21 +1,38 @@
 /**
  * @axiomtide/conk-sdk
- * Anonymous micropayment and communication SDK for CONK protocol.
+ * Anonymous micropayment and communication SDK for the CONK protocol on Sui.
  *
  * @example
  * import { ConkClient } from '@axiomtide/conk-sdk'
  *
  * const conk = new ConkClient({ network: 'mainnet' })
+ *   .withLimits({ maxTxPerMinute: 10, maxCentsPerWindow: 500 })
  */
 
-export { ConkClient }    from './ConkClient'
-export { Harbor }        from './Harbor'
-export { Vessel }        from './Vessel'
-export { Cast }          from './Cast'
-export { Receipt }       from './Receipt'
-export { Attachments }   from './Attachments'
+// ─── Core ─────────────────────────────────────────────────────────────────────
+export { ConkClient }  from './ConkClient'
+export { Harbor }      from './Harbor'
+export { Vessel }      from './Vessel'
+export { Cast }        from './Cast'
+export { Receipt }     from './Receipt'
+export { Attachments } from './Attachments'
 
-// Config helpers (useful for integrators)
+// ─── Gas ──────────────────────────────────────────────────────────────────────
+export { Gas }         from './gas'
+export type { GasEstimate } from './gas'
+
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+export { TxRateLimiter, SpendRateLimiter, DaemonLimiter } from './ratelimit'
+export type { TxRateLimitConfig, SpendLimitConfig, DaemonLimiterConfig } from './ratelimit'
+
+// ─── Streaming ────────────────────────────────────────────────────────────────
+export { CastStream, createStream } from './stream'
+
+// ─── Retry ────────────────────────────────────────────────────────────────────
+export { withRetry, withRpcRetry, withTxRetry } from './retry'
+export type { RetryOptions } from './retry'
+
+// ─── Config ───────────────────────────────────────────────────────────────────
 export {
   DEFAULT_PROXY,
   CONTRACTS,
@@ -25,7 +42,7 @@ export {
   USDC_DECIMALS,
 } from './config'
 
-// Types
+// ─── Types ────────────────────────────────────────────────────────────────────
 export type {
   ConkClientConfig,
   Network,
@@ -50,3 +67,40 @@ export type {
 } from './types'
 
 export { ConkError, ConkErrorCode } from './types'
+
+// ─── Lighthouse / Beacon / Registry ──────────────────────────────────────────
+export { Lighthouse }  from './Lighthouse'
+export { Beacon }      from './Beacon'
+export { Registry }    from './Registry'
+
+export type {
+  MediaType,
+  LighthouseCategory,
+  LighthousePublishOptions,
+  LighthousePurchaseResult,
+  LighthouseMetadata,
+} from './Lighthouse'
+
+export type {
+  BeaconProfile,
+  BeaconState,
+} from './Beacon'
+
+export type {
+  RegistrySearchOptions,
+  RegistryEntry,
+} from './Registry'
+
+// ─── Siren ────────────────────────────────────────────────────────────────────
+export { Siren, SirenClient, SirenRegistry } from './Siren'
+export {
+  SIREN_ABYSS_FLOOR_USDC,
+  SIREN_ABYSS_FLOOR_UNITS,
+} from './Siren'
+export type {
+  SirenTier,
+  SirenClientConfig,
+  SirenPublishOptions,
+  SirenMetadata,
+  SirenSearchOptions,
+} from './Siren'
