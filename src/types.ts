@@ -37,6 +37,8 @@ export interface ZkLoginSession {
   maxEpoch: number
   randomness: string
   salt: string
+  /** Optional — derived from salt if not present */
+  addressSeed?: string
 }
 
 export interface ZkProof {
