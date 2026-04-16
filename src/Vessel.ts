@@ -83,7 +83,7 @@ export class Vessel {
 
     // TODO: slot exact module path from client.ts
     tx.moveCall({
-      target:    `${contracts.package}::vessel::create`,
+      target:    `${contracts.package}::vessel::launch`,
       arguments: [
         tx.object(harborObjectId),
         tx.pure.u64(fuelAmountCents),

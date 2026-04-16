@@ -171,7 +171,7 @@ export class Harbor {
 
     // TODO: slot exact module path from client.ts
     tx.moveCall({
-      target:    `${contracts.package}::harbor::create`,
+      target:    `${contracts.package}::harbor::open`,
       arguments: [],
     })
 

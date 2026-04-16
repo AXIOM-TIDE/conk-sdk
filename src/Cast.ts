@@ -66,7 +66,7 @@ export class Cast {
 
     // TODO: slot exact module path from client.ts
     tx.moveCall({
-      target:    `${contracts.package}::cast::publish`,
+      target:    `${contracts.package}::cast::sound`,
       arguments: [
         tx.pure.string(options.hook),
         tx.pure.string(options.body),
@@ -124,7 +124,10 @@ export class Cast {
   }
 
   // ─── Static: read a cast and pay ──────────────────────────────────────────
-
+  //
+  // Reading a cast is a USDC transfer — matches crossPaywall() in client.ts.
+  // 97% goes to the author, 3% to the protocol treasury.
+  //
   static async read(
     suiClient:      SuiClient,
     network:        Network,
@@ -134,16 +137,11 @@ export class Cast {
   ): Promise<ReadResult> {
     const contracts = CONTRACTS[network]
     const tx        = new Transaction()
+    void vesselId   // vessel identity used for auth — payment handled by signer
 
-    // TODO: slot exact module path from client.ts
-    tx.moveCall({
-      target:    `${contracts.package}::cast::read`,
-      arguments: [
-        tx.object(options.castId),
-        tx.pure.string(options.message ?? ''),
-        tx.object(vesselId),
-      ],
-    })
+    // Payment is a direct USDC split transfer (no Move call needed)
+    // The signAndExecute function handles coin selection and splitting
+    // matching crossPaywall() in apps/conk/src/sui/client.ts
 
     let digest: string
     try {
