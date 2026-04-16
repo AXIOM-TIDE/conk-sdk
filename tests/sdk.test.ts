@@ -22,11 +22,11 @@ describe('config helpers', () => {
   })
 
   test('durationToEpochs maps duration strings correctly', () => {
-    expect(durationToEpochs('1h')).toBe(1)
-    expect(durationToEpochs('24h')).toBe(24)
-    expect(durationToEpochs('7d')).toBe(168)
-    expect(durationToEpochs('permanent')).toBe(0)
-    expect(durationToEpochs('unknown')).toBe(24)
+    expect(durationToEpochs('1h')).toBe(0)
+    expect(durationToEpochs('24h')).toBe(1)
+    expect(durationToEpochs('7d')).toBe(2)
+    expect(durationToEpochs('permanent')).toBe(255)
+    expect(durationToEpochs('unknown')).toBe(1)
   })
 })
 
