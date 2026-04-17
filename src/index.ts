@@ -107,3 +107,6 @@ export type {
 
 export { SealClient, buildSealMetadata, parseSealMetadata } from './Seal'
 export type { SealEncryptOptions, SealEncryptResult, SealDecryptOptions, SealPolicy } from './Seal'
+
+export { RoyaltyBuilder, validateRoyaltySplit, calculateRoyaltyPayments, buildRoyaltyMetadata, parseRoyaltyMetadata } from './Royalties'
+export type { RoyaltyRecipient, RoyaltySplit, RoyaltyPayment } from './Royalties'
