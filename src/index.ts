@@ -104,3 +104,6 @@ export type {
   SirenMetadata,
   SirenSearchOptions,
 } from './Siren'
+
+export { SealClient, buildSealMetadata, parseSealMetadata } from './Seal'
+export type { SealEncryptOptions, SealEncryptResult, SealDecryptOptions, SealPolicy } from './Seal'
