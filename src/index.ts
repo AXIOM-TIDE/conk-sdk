@@ -110,3 +110,6 @@ export type { SealEncryptOptions, SealEncryptResult, SealDecryptOptions, SealPol
 
 export { RoyaltyBuilder, validateRoyaltySplit, calculateRoyaltyPayments, buildRoyaltyMetadata, parseRoyaltyMetadata } from './Royalties'
 export type { RoyaltyRecipient, RoyaltySplit, RoyaltyPayment } from './Royalties'
+
+export { SubscriptionClient, INTERVAL_MS, INTERVAL_LABEL } from './Subscription'
+export type { SubscriptionInterval, SubscribeOptions, SubscriptionResult, SubscriptionRecord } from './Subscription'
