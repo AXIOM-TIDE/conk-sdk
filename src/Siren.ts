@@ -6,13 +6,13 @@
  * the same control an author has over a Cast, applied to audio.
  *
  * Two tiers:
- *   'sample' — $0.001 publishing fee → Abyss. Per-play price set by author.
+ *   'sample' — $0.03 publishing fee → Abyss. Per-play price set by author.
  *              Sample plays route 97% → author vessel · 3% → treasury.
  *              $0 per-play = pure marketing. Any price above = revenue.
  *
  *   'paid'   — author sets per-play price freely.
  *              Same 97/3 split. Same mode options. Same auto-response.
- *              $0.001 Abyss floor on publish is still non-negotiable.
+ *              $0.03 Abyss floor on publish is still non-negotiable.
  *
  * Author options mirror Cast exactly:
  *   - Price:        author sets it (0 to any amount)
@@ -53,8 +53,8 @@ import type { LighthouseCategory } from './Lighthouse'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** One-time publishing fee to Abyss. Non-negotiable. */
-export const SIREN_ABYSS_FLOOR_USDC  = 0.001
-export const SIREN_ABYSS_FLOOR_UNITS = 1_000
+export const SIREN_ABYSS_FLOOR_USDC  = 0.03
+export const SIREN_ABYSS_FLOOR_UNITS = 30_000
 
 // ─── Siren tier ───────────────────────────────────────────────────────────────
 
@@ -205,7 +205,7 @@ export class SirenClient {
   /**
    * Upload audio and broadcast a Siren.
    *
-   * Publishing always pays $0.001 → Abyss (one-time network fee).
+   * Publishing always pays $0.03 → Abyss (one-time network fee).
    * Per-play payments route 97% → author vessel, 3% → treasury.
    */
   async broadcast(
@@ -353,7 +353,7 @@ export class SirenClient {
 
   private priceLabel(tier: SirenTier, priceUsdc: number): string {
     if (priceUsdc === 0) {
-      return tier === 'sample' ? 'sample · $0.001 publish fee' : 'open'
+      return tier === 'sample' ? 'sample · $0.03 publish fee' : 'open'
     }
     return `$${priceUsdc.toFixed(3)} · ${tier}`
   }
