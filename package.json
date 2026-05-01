@@ -1,6 +1,6 @@
 {
   "name": "@axiomtide/conk-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Anonymous micropayment and communication SDK for the CONK protocol on Sui",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

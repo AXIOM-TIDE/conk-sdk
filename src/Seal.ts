@@ -257,7 +257,7 @@ export class SealClient {
     key:       Uint8Array,
   ): Promise<{ encryptedBytes: Uint8Array; iv: Uint8Array }> {
     const cryptoKey = await crypto.subtle.importKey(
-      'raw', key, { name: 'AES-GCM' }, false, ['encrypt'],
+      'raw', key.buffer as ArrayBuffer, { name: 'AES-GCM' }, false, ['encrypt'],
     )
 
     const iv = crypto.getRandomValues(new Uint8Array(SEAL_NONCE_SIZE))
@@ -265,7 +265,7 @@ export class SealClient {
     const encrypted = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv },
       cryptoKey,
-      plaintext,
+      plaintext.buffer as ArrayBuffer,
     )
 
     // Prepend IV to encrypted bytes for storage
@@ -286,13 +286,13 @@ export class SealClient {
     const encrypted = encryptedWithIv.slice(SEAL_NONCE_SIZE)
 
     const cryptoKey = await crypto.subtle.importKey(
-      'raw', key, { name: 'AES-GCM' }, false, ['decrypt'],
+      'raw', key.buffer as ArrayBuffer, { name: 'AES-GCM' }, false, ['decrypt'],
     )
 
     const decrypted = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv },
       cryptoKey,
-      encrypted,
+      encrypted.buffer as ArrayBuffer,
     )
 
     return new Uint8Array(decrypted)

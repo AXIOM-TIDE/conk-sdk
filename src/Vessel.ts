@@ -65,7 +65,48 @@ export class Vessel {
       this.state.objectId,
       options,
       this.signAndExecute,
+      this.session,
     )
+  }
+
+  // ─── Claim a vessel name ──────────────────────────────────────────────────
+
+  /**
+   * Sound a special identity Cast that registers a human-readable name for
+   * this vessel. The cast hook follows the `[VESSEL:NAME] <name>` pattern,
+   * which VesselRegistry.findVessel() uses to index names.
+   *
+   * @param name  Human-readable label (e.g. "alice" or "my-agent")
+   * @returns     Cast ID and transaction digest of the name claim
+   *
+   * @example
+   * const { castId } = await vessel.claimName('alice')
+   */
+  async claimName(name: string): Promise<{ castId: string; txDigest: string }> {
+    const hook = `[VESSEL:NAME] ${name}`
+    const body = JSON.stringify({
+      type:      'vessel:name',
+      vesselId:  this.state.objectId,
+      name,
+      claimedAt: new Date().toISOString(),
+    })
+
+    const cast = await Cast.publish(
+      this.suiClient,
+      this.network,
+      this.session,
+      this.state.objectId,
+      {
+        hook,
+        body,
+        price:    0.001,   // 0.001 USDC — standard sound fee, readable by anyone
+        mode:     'open',
+        duration: '24h',
+      },
+      this.signAndExecute,
+    )
+
+    return { castId: cast.id, txDigest: cast.txDigest }
   }
 
   // ─── Static factory — create Vessel object on-chain ───────────────────────
