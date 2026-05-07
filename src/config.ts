@@ -9,10 +9,10 @@ import type { Network } from './types'
 
 export const CONTRACTS = {
   mainnet: {
-    package:  '0x8cde30c2af7523193689e2f3eaca6dc4fadf6fd486471a6c31b14bc9db5164b2',
+    package:  '0x23a10fe5bd4a7b78087d6e716a1e810168e0b3332ff022637606a02d001fc9f1',
     treasury: '0xe0117fba317d2267b8d90adca1fe79eceeec756bcf54edf04cc29ee5306ab32e',
-    abyss:    '0x22d066f6337d68848e389402926b4a10424d9728744efb9e6dd0d0ca1c5921c7',
-    drift:    '0x95520350968d56b3552521d3ea508934517dde94ad30bb43209aa4fc3cec21de',
+    abyss:    '0x392d5f46b5f02fb34cc0cb06c27e89b6e4dacc4cafd41e3b9ac1bc9f02dd1598',
+    drift:    '0x289d866bfff98a9811f20a76cea5a4e935ff91931af521189f7f389e509a414c',
     clock:    '0x6',
   },
   testnet: {
@@ -120,7 +120,7 @@ export const TREASURY_SHARE = 0.03   // 3% to protocol
  * "Sample" tier pays this. "Paid" tier pays this plus the author's price.
  * The Abyss always gets paid. This is how the network stays alive.
  */
-export const SIREN_FLOOR_USDC  = 0.001
-export const SIREN_FLOOR_UNITS = 1_000
+export const SIREN_FLOOR_USDC  = 0.03
+export const SIREN_FLOOR_UNITS = 30_000
 
 export const USDC_COIN_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
