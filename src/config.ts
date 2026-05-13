@@ -9,10 +9,10 @@ import type { Network } from './types'
 
 export const CONTRACTS = {
   mainnet: {
-    package:  '0x8cde30c2af7523193689e2f3eaca6dc4fadf6fd486471a6c31b14bc9db5164b2',
+    package:  '0x5b2581953997faa81c3294d1ed5619ad9f1acf2883197727a54c6a0cbdb067f3',  // v8 — Chest
     treasury: '0xe0117fba317d2267b8d90adca1fe79eceeec756bcf54edf04cc29ee5306ab32e',
-    abyss:    '0x22d066f6337d68848e389402926b4a10424d9728744efb9e6dd0d0ca1c5921c7',
-    drift:    '0x95520350968d56b3552521d3ea508934517dde94ad30bb43209aa4fc3cec21de',
+    abyss:    '0x392d5f46b5f02fb34cc0cb06c27e89b6e4dacc4cafd41e3b9ac1bc9f02dd1598',
+    drift:    '0x289d866bfff98a9811f20a76cea5a4e935ff91931af521189f7f389e509a414c',
     clock:    '0x6',
   },
   testnet: {

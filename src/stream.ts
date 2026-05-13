@@ -1,5 +1,5 @@
 /**
- * @axiomtide/conk-sdk — Stream
+ * @axiomtide/conk-sdk — CastStream
  * Streaming delivery for large cast bodies via Walrus aggregator.
  *
  * For small casts (< 64KB) the body is returned inline in the Read tx.

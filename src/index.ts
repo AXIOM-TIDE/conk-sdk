@@ -25,8 +25,16 @@ export type { GasEstimate } from './gas'
 export { TxRateLimiter, SpendRateLimiter, DaemonLimiter } from './ratelimit'
 export type { TxRateLimitConfig, SpendLimitConfig, DaemonLimiterConfig } from './ratelimit'
 
-// ─── Streaming ────────────────────────────────────────────────────────────────
+// ─── Streaming (Walrus blob delivery) ───────────────────────────────────────
 export { CastStream, createStream } from './stream'
+
+// ─── Chest ───────────────────────────────────────────────────────────────────
+export { Chest, CHEST_TIER, CHEST_FEES, CHEST_FEE_UNITS } from './Chest'
+export type { ChestTier, ChestOpenOptions, ChestResult, ChestAccessResult } from './Chest'
+
+// ─── Stream (live content primitive) ──────────────────────────────────────
+export { Stream, STREAM_PAYMENT_TYPE, STREAM_CREATE_FEE, STREAM_MIN_SESSION_FEE } from './LiveStream'
+export type { StreamPaymentType, StreamCreateOptions, StreamResult, StreamSessionResult } from './LiveStream'
 
 // ─── Retry ────────────────────────────────────────────────────────────────────
 export { withRetry, withRpcRetry, withTxRetry } from './retry'
