@@ -187,6 +187,41 @@ export class Receipt {
     }
   }
 
+  /**
+   * Promise-based version of onRead() that resolves on the first read event.
+   *
+   * @param timeoutMs  Optional timeout in milliseconds. Rejects with ConkError on expiry.
+   *
+   * @example
+   * const event = await cast.receipt.awaitRead(30_000)
+   * console.log('First read:', event.txDigest)
+   */
+  awaitRead(timeoutMs?: number): Promise<ReadEvent> {
+    return new Promise<ReadEvent>((resolve, reject) => {
+      let unsubscribe: (() => void) | null = null
+      let timer: ReturnType<typeof setTimeout> | null = null
+
+      if (timeoutMs !== undefined && timeoutMs > 0) {
+        timer = setTimeout(() => {
+          if (unsubscribe) unsubscribe()
+          reject(
+            new ConkError(
+              `awaitRead timed out after ${timeoutMs}ms`,
+              ConkErrorCode.NETWORK_ERROR,
+              { castId: this.castId, timeoutMs },
+            ),
+          )
+        }, timeoutMs)
+      }
+
+      unsubscribe = this.onRead((event) => {
+        if (timer) clearTimeout(timer)
+        if (unsubscribe) unsubscribe()
+        resolve(event)
+      })
+    })
+  }
+
   destroy(): void {
     this.sub.listeners = []
     this.stopAll()

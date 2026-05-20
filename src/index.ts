@@ -12,7 +12,9 @@
 // ─── Core ─────────────────────────────────────────────────────────────────────
 export { ConkClient }  from './ConkClient'
 export { Harbor }      from './Harbor'
-export { Vessel }      from './Vessel'
+export { Vessel }         from './Vessel'
+export { VesselRegistry } from './VesselRegistry'
+export type { VesselEntry, FindVesselOptions } from './VesselRegistry'
 export { Cast }        from './Cast'
 export { Receipt }     from './Receipt'
 export { Attachments } from './Attachments'
