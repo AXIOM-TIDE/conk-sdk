@@ -9,7 +9,7 @@ import type { Network } from './types'
 
 export const CONTRACTS = {
   mainnet: {
-    package:  '0x7bc8f81b03cede714045a9f24e5f776fc449000c9414e33908ebe177d3b5ac2b',  // v9 — Stream
+    package:  '0x50515260e8f766ad01461f78065b18510fef6879c3a8a776edc7da76a1db62a8',  // v10 — MIN_PAID_PRICE $0.001
     treasury: '0xe0117fba317d2267b8d90adca1fe79eceeec756bcf54edf04cc29ee5306ab32e',
     abyss:    '0x392d5f46b5f02fb34cc0cb06c27e89b6e4dacc4cafd41e3b9ac1bc9f02dd1598',
     drift:    '0x289d866bfff98a9811f20a76cea5a4e935ff91931af521189f7f389e509a414c',
