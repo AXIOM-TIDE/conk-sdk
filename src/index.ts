@@ -18,6 +18,7 @@ export type { VesselEntry, FindVesselOptions } from './VesselRegistry'
 export { Cast }        from './Cast'
 export { Receipt }     from './Receipt'
 export { Attachments } from './Attachments'
+export type { BlobManifest, BlobManifestEntry } from './Attachments'
 
 // ─── Gas ──────────────────────────────────────────────────────────────────────
 export { Gas }         from './gas'
