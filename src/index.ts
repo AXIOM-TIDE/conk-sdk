@@ -51,7 +51,20 @@ export {
   toBaseUnits,
   toCents,
   USDC_DECIMALS,
+  // v11 shared object IDs
+  CONK_PACKAGE_ID,
+  PROTOCOL_CONFIG_ID,
+  LIGHTHOUSE_REGISTRY_ID,
+  PENDING_V11_DEPLOY,
 } from './config'
+
+// ─── Vessel Reputation (v11) ────────────────────────────────────────────────────
+export { getVesselReputation, getVesselReputations } from './VesselReputation'
+export type { VesselReputation } from './VesselReputation'
+
+// ─── LighthouseIndex (v11) ──────────────────────────────────────────────────────
+export { isLighthouse, getLighthouseEntry } from './LighthouseIndex'
+export type { LighthouseEntry } from './LighthouseIndex'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type {

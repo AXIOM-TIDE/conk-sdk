@@ -1,18 +1,46 @@
 /**
  * @axiomtide/conk-sdk — Protocol Configuration
- * Synced with apps/conk/src/sui/index.ts — April 15, 2026
+ * Synced with CONK v11 protocol.
  */
 
 import type { Network } from './types'
 
+// ─── v11 Package & Shared Object IDs ─────────────────────────────────────────
+// These are populated via environment variables after the v11 deploy.
+// Until deploy completes the sentinel 'PENDING_V11_DEPLOY' is used.
+
+/** CONK Move package address (v11). Deploy tx: FzZPXnyBKqFitg5KU5cApHjx8G75dexk9vdnBewen8dL */
+export const CONK_PACKAGE_ID =
+  process.env.CONK_PACKAGE_ID || '0x734b19fa1696dec30f8cae38f1cdbf0ab5a12720735f7c7b0d4935cab31732cc'
+
+/**
+ * ProtocolConfig shared object (new in v11).
+ * Required as input to cast::read().
+ */
+export const PROTOCOL_CONFIG_ID =
+  process.env.CONK_PROTOCOL_CONFIG_ID || '0xdc8e5131d6e3bec492a2e12b1d7beddbfec709ae5def8e775dab59c7a45421ea'
+
+/**
+ * LighthouseRegistry shared object (new in v11).
+ * Required as input to lighthouse::raise() and registry queries.
+ */
+export const LIGHTHOUSE_REGISTRY_ID =
+  process.env.CONK_LIGHTHOUSE_REGISTRY_ID || '0x5ee0f0a6ad1b89412a2e05def4f1e0ad6e606df3751c030e9601fd155b444e94'
+
 // ─── Contract Addresses ───────────────────────────────────────────────────────
 
-export const CONTRACTS = {
+export const CONTRACTS: Record<Network, {
+  package:  string
+  treasury: string
+  abyss:    string
+  drift:    string
+  clock:    string
+}> = {
   mainnet: {
-    package:  '0x50515260e8f766ad01461f78065b18510fef6879c3a8a776edc7da76a1db62a8',  // v10 — MIN_PAID_PRICE $0.001
+    package:  CONK_PACKAGE_ID,  // v11 — deploy tx FzZPXnyBKqFitg5KU5cApHjx8G75dexk9vdnBewen8dL
     treasury: '0xe0117fba317d2267b8d90adca1fe79eceeec756bcf54edf04cc29ee5306ab32e',
-    abyss:    '0x392d5f46b5f02fb34cc0cb06c27e89b6e4dacc4cafd41e3b9ac1bc9f02dd1598',
-    drift:    '0x289d866bfff98a9811f20a76cea5a4e935ff91931af521189f7f389e509a414c',
+    abyss:    '0x075c8667d1780bdde01a8175cd458aa345b3f6e2a84c45b91f82b344a4325bd0',  // v11
+    drift:    '0x9312b6837bb12381849b413636064cd8d56b6ef84bf891b3f756b3cbb6157fad',  // v11
     clock:    '0x6',
   },
   testnet: {
@@ -29,7 +57,7 @@ export const CONTRACTS = {
     drift:    '',
     clock:    '0x6',
   },
-} as const
+}
 
 // ─── RPC Endpoints ────────────────────────────────────────────────────────────
 
@@ -124,3 +152,9 @@ export const SIREN_FLOOR_USDC  = 0.001
 export const SIREN_FLOOR_UNITS = 1_000
 
 export const USDC_COIN_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
+
+/**
+ * v11 sentinel value — present in IDs until post-deploy env vars are set.
+ * Consumer code may check against this to detect unconfigured deployments.
+ */
+export const PENDING_V11_DEPLOY = 'PENDING_V11_DEPLOY'

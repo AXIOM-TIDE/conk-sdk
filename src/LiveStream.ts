@@ -63,6 +63,12 @@ export interface StreamCreateOptions {
   durationSeconds: number
   /** Payment model */
   paymentType: StreamPaymentType
+  /**
+   * v11: Publisher's Vessel object ID.
+   * Required for cross-primitive reputation attribution.
+   * Set to the Vessel.objectId() of the stream creator.
+   */
+  vesselId: string
 }
 
 export interface StreamResult {
@@ -146,6 +152,7 @@ export class Stream {
       arguments: [
         feeCoin,
         tx.object(contracts.abyss),
+        tx.pure.id(options.vesselId),          // v11: vessel_id for attribution
         tx.pure.u64(priceUnits),
         tx.pure.u64(durationMs),
         tx.pure.u8(options.paymentType),
