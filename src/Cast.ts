@@ -11,6 +11,7 @@ import { bcs }         from '@mysten/sui/bcs'
 import { Receipt }     from './Receipt'
 import {
   CONTRACTS,
+  PROTOCOL_CONFIG_ID,
   toBaseUnits,
   durationToEpochs,
   USDC_TYPE,
@@ -70,22 +71,29 @@ export class Cast {
   /**
    * Build and execute a `cast::sound` PTB.
    *
-   * PTB layout (verified against mainnet):
+   * v11 PTB layout:
    *   cmd[0]: SplitCoins(usdcCoin, [SOUND_FEE])
    *   cmd[1]: MoveCall cast::sound(
-   *     NestedResult[0][0],  // USDC fee coin
-   *     &mut Abyss,          // shared object
-   *     vesselId (ID),       // vessel object ID as pure id
-   *     mode (u8),
-   *     hook (vector<u8>),
-   *     body (vector<u8>),
-   *     attachment (vector<vector<u8>>),  // BCS-encoded Option<vector<u8>>
-   *     auto_response (u8),
-   *     author (address),
-   *     duration (u8),
-   *     price (u64),
-   *     &Clock,              // shared object 0x6
+   *     NestedResult[0][0],  // [0]  Coin<USDC> (sound fee)
+   *     &mut Abyss,          // [1]  shared object
+   *     &mut Vessel,         // [2]  publisher's Vessel (mutable object ref, v11)
+   *     &VesselCap,          // [3]  publisher's VesselCap (immutable object ref, v11)
+   *     mode (u8),           // [4]
+   *     hook (vector<u8>),   // [5]
+   *     body (vector<u8>),   // [6]
+   *     attachment (vector<vector<u8>>),  // [7]  BCS-encoded Option<vector<u8>>
+   *     auto_response (u8),  // [8]
+   *     author (address),    // [9]
+   *     duration (u8),       // [10]
+   *     price (u64),         // [11]
+   *     &Clock,              // [12] shared object 0x6
    *   )
+   *
+   * Breaking change in v11: vessel_id (ID) + vessel_tier (u8) replaced by
+   * &mut Vessel + &VesselCap. The contract now derives ID and tier from
+   * the on-chain Vessel object directly.
+   *
+   * @param vesselCapId  The publisher's VesselCap object ID (required in v11).
    */
   static async publish(
     suiClient:      SuiClient,
@@ -94,6 +102,7 @@ export class Cast {
     vesselId:       string,
     options:        PublishOptions,
     signAndExecute: (tx: Transaction) => Promise<{ digest: string }>,
+    vesselCapId:    string,
   ): Promise<Cast> {
     const contracts = CONTRACTS[network]
 
@@ -130,22 +139,23 @@ export class Cast {
         ).toBytes()
       : bcs.vector(bcs.vector(bcs.u8())).serialize([]).toBytes()
 
-    // cmd[1]: cast::sound
+    // cmd[1]: cast::sound  (v11: &mut Vessel + &VesselCap replace raw vessel_id + vessel_tier)
     tx.moveCall({
       target:    `${contracts.package}::cast::sound`,
       arguments: [
-        feeCoin,                                              // [0]  Coin<USDC> (sound fee)
-        tx.object(contracts.abyss),                          // [1]  &mut Abyss
-        tx.pure.id(vesselId),                                // [2]  vessel ID (object::ID)
-        tx.pure.u8(MODE_U8[options.mode] ?? 0),              // [3]  mode u8
-        tx.pure.vector('u8', hookBytes),                     // [4]  hook vector<u8>
-        tx.pure.vector('u8', bodyBytes),                     // [5]  body vector<u8>
-        tx.pure(attachmentBcs),                              // [6]  attachment Option<vector<u8>>
-        tx.pure.u8(0),                                       // [7]  auto_response flag
-        tx.pure.address(session.address),                    // [8]  author address
-        tx.pure.u8(durationToEpochs(options.duration ?? '24h')), // [9]  duration u8
-        tx.pure.u64(toBaseUnits(options.price)),             // [10] price u64
-        tx.object(contracts.clock),                          // [11] &Clock
+        feeCoin,                                                  // [0]  Coin<USDC> (sound fee)
+        tx.object(contracts.abyss),                              // [1]  &mut Abyss
+        tx.object(vesselId),                                     // [2]  &mut Vessel
+        tx.object(vesselCapId),                                  // [3]  &VesselCap
+        tx.pure.u8(MODE_U8[options.mode] ?? 0),                  // [4]  mode u8
+        tx.pure.vector('u8', hookBytes),                         // [5]  hook vector<u8>
+        tx.pure.vector('u8', bodyBytes),                         // [6]  body vector<u8>
+        tx.pure(attachmentBcs),                                  // [7]  attachment Option<vector<u8>>
+        tx.pure.u8(0),                                           // [8]  auto_response flag
+        tx.pure.address(session.address),                        // [9]  author address
+        tx.pure.u8(durationToEpochs(options.duration ?? '24h')), // [10] duration u8
+        tx.pure.u64(toBaseUnits(options.price)),                 // [11] price u64
+        tx.object(contracts.clock),                              // [12] &Clock
       ],
     })
 
@@ -250,15 +260,16 @@ export class Cast {
     // cmd[0]: Split the cast's read price
     const [paymentCoin] = tx.splitCoins(tx.object(usdcCoinId), [tx.pure.u64(readPrice)])
 
-    // cmd[1]: cast::read
+    // cmd[1]: cast::read  (v11: ProtocolConfig added at position [3])
     tx.moveCall({
       target:    `${contracts.package}::cast::read`,
       arguments: [
-        tx.object(options.castId),      // [0] &mut Cast
-        paymentCoin,                     // [1] Coin<USDC>
-        tx.object(contracts.abyss),      // [2] &mut Abyss
-        tx.pure.address(readerAddress),  // [3] reader address
-        tx.object(contracts.clock),      // [4] &Clock
+        tx.object(options.castId),        // [0] &mut Cast
+        paymentCoin,                       // [1] Coin<USDC>
+        tx.object(contracts.abyss),        // [2] &mut Abyss
+        tx.object(PROTOCOL_CONFIG_ID),     // [3] &ProtocolConfig (new in v11)
+        tx.pure.address(readerAddress),    // [4] reader address
+        tx.object(contracts.clock),        // [5] &Clock
       ],
     })
 

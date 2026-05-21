@@ -84,6 +84,8 @@ export interface VesselState {
   address: string
   fuelCents: number
   objectId: string
+  /** VesselCap object ID co-created with the Vessel (required for v11 cast::sound) */
+  capObjectId?: string
 }
 
 // ─── Cast ────────────────────────────────────────────────────────────────────

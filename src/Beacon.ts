@@ -118,7 +118,10 @@ export class Beacon {
       },
     })
 
-    // 4. Build and cache the lighthouse metadata
+    // 4. Register the cast in the on-chain LighthouseRegistry (v11)
+    await this.vessel.raiseToLighthouse(cast.id)
+
+    // 5. Build and cache the lighthouse metadata
     const lighthouseMeta: LighthouseMetadata = {
       castId:        cast.id,
       url:           cast.url,

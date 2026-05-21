@@ -51,7 +51,20 @@ export {
   toBaseUnits,
   toCents,
   USDC_DECIMALS,
+  // v11 shared object IDs
+  CONK_PACKAGE_ID,
+  PROTOCOL_CONFIG_ID,
+  LIGHTHOUSE_REGISTRY_ID,
+  PENDING_V11_DEPLOY,
 } from './config'
+
+// ─── Vessel Reputation (v11) ────────────────────────────────────────────────────
+export { getVesselReputation, getVesselReputations } from './VesselReputation'
+export type { VesselReputation } from './VesselReputation'
+
+// ─── LighthouseIndex (v11) ──────────────────────────────────────────────────────
+export { isLighthouse, getLighthouseEntry } from './LighthouseIndex'
+export type { LighthouseEntry } from './LighthouseIndex'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type {
@@ -124,3 +137,9 @@ export type { RoyaltyRecipient, RoyaltySplit, RoyaltyPayment } from './Royalties
 
 export { SubscriptionClient, INTERVAL_MS, INTERVAL_LABEL } from './Subscription'
 export type { SubscriptionInterval, SubscribeOptions, SubscriptionResult, SubscriptionRecord } from './Subscription'
+
+// ─── v11: Reputation + Registry ───────────────────────────────────────────────
+export type { VesselReputation } from './Vessel'
+export { isLighthouse, getLighthouseEntry } from './LighthouseRegistry'
+export type { LighthouseEntry } from './LighthouseRegistry'
+export { CONK_PACKAGE_ID, PROTOCOL_CONFIG_ID, LIGHTHOUSE_REGISTRY_ID } from './config'
