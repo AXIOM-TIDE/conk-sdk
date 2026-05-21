@@ -133,29 +133,34 @@ export class Cast {
     // Attachment: Option<vector<u8>> → represented as vector<vector<u8>> via BCS
     //   None  → serialize([])
     //   Some(bytes) → serialize([[...bytes...]])
+    // media_blob is Option<vector<u8>> in Move — encode as bcs option
     const attachmentBcs = options.attachment
-      ? bcs.vector(bcs.vector(bcs.u8())).serialize(
-          [Array.from(new TextEncoder().encode(options.attachment))],
+      ? bcs.option(bcs.vector(bcs.u8())).serialize(
+          Array.from(new TextEncoder().encode(options.attachment)),
         ).toBytes()
-      : bcs.vector(bcs.vector(bcs.u8())).serialize([]).toBytes()
+      : bcs.option(bcs.vector(bcs.u8())).serialize(null).toBytes()
 
-    // cmd[1]: cast::sound  (v11: &mut Vessel + &VesselCap replace raw vessel_id + vessel_tier)
+    // cmd[1]: cast::sound  (v11 exact signature)
+    // fee_coin, abyss, vessel(&mut), vessel_cap(&), hook, content_blob,
+    // media_blob(Option), mode, recipient, duration, fee, max_claims,
+    // dock_description, clock
     tx.moveCall({
       target:    `${contracts.package}::cast::sound`,
       arguments: [
-        feeCoin,                                                  // [0]  Coin<USDC> (sound fee)
+        feeCoin,                                                  // [0]  Coin<USDC>
         tx.object(contracts.abyss),                              // [1]  &mut Abyss
         tx.object(vesselId),                                     // [2]  &mut Vessel
         tx.object(vesselCapId),                                  // [3]  &VesselCap
-        tx.pure.u8(MODE_U8[options.mode] ?? 0),                  // [4]  mode u8
-        tx.pure.vector('u8', hookBytes),                         // [5]  hook vector<u8>
-        tx.pure.vector('u8', bodyBytes),                         // [6]  body vector<u8>
-        tx.pure(attachmentBcs),                                  // [7]  attachment Option<vector<u8>>
-        tx.pure.u8(0),                                           // [8]  auto_response flag
-        tx.pure.address(session.address),                        // [9]  author address
-        tx.pure.u8(durationToEpochs(options.duration ?? '24h')), // [10] duration u8
-        tx.pure.u64(toBaseUnits(options.price)),                 // [11] price u64
-        tx.object(contracts.clock),                              // [12] &Clock
+        tx.pure.vector('u8', hookBytes),                         // [4]  hook
+        tx.pure.vector('u8', bodyBytes),                         // [5]  content_blob
+        tx.pure(attachmentBcs),                                  // [6]  media_blob Option<vector<u8>>
+        tx.pure.u8(MODE_U8[options.mode] ?? 0),                  // [7]  mode
+        tx.pure.address(session.address),                        // [8]  recipient
+        tx.pure.u8(durationToEpochs(options.duration ?? '24h')), // [9]  duration
+        tx.pure.u64(toBaseUnits(options.price)),                 // [10] fee
+        tx.pure.u64(1n),                                         // [11] max_claims: 1
+        tx.pure.vector('u8', []),                                // [12] dock_description: empty
+        tx.object(contracts.clock),                              // [13] &Clock
       ],
     })
 
