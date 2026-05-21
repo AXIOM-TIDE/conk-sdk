@@ -1,144 +1,106 @@
 /**
- * @axiomtide/conk-sdk — Stream (protocol primitive)
+ * @axiomtide/conk-sdk — Stream
  * Time-gated paid access sessions for live content on Sui.
- * Creators open a Stream. Viewers join and receive a StreamSession.
- * Three payment models: Per-View · Per-Minute · Subscription.
- * Revenue split: 97% to creator / 3% to protocol on every join.
- * Settle on join — non-custodial. CONK never holds creator funds.
+ *
+ * Creators open a Stream (shared object). Viewers join and receive
+ * a StreamSession (owned object) that is valid for a configured duration.
+ * Revenue split: 97% to creator / 3% to Abyss on every join.
+ * Settlement is non-custodial — CONK never holds creator funds.
+ *
+ * Three payment models:
+ *   PER_VIEW     (0) — one-time flat fee for full duration
+ *   PER_MINUTE   (1) — rate-based billing, charged upfront at join
+ *   SUBSCRIPTION (2) — recurring access for subscribers
+ *
+ * Usage (creator):
+ *   const s = await Stream.create(suiClient, 'mainnet', senderAddress, {
+ *     pricePerSession: 0.10,
+ *     durationSeconds: 3600,
+ *     paymentType: STREAM_PAYMENT_TYPE.PER_VIEW,
+ *   }, signAndExecute)
+ *   console.log(s.id)   // shared Stream object ID
+ *
+ * Usage (viewer):
+ *   const session = await Stream.join(suiClient, 'mainnet', senderAddress, streamId, signAndExecute)
+ *   const active  = await Stream.verify(suiClient, session.sessionId)
+ *
+ * Usage (creator close):
+ *   await Stream.end(suiClient, 'mainnet', senderAddress, streamId, signAndExecute, { vodChestId })
  */
 
-import { Transaction }        from '@mysten/sui/transactions'
-import { SuiClient }          from '@mysten/sui/client'
-import { Ed25519Keypair }     from '@mysten/sui/keypairs/ed25519'
-import { CONTRACTS, toBaseUnits, USDC_COIN_TYPE } from './config'
-import { ConkError, ConkErrorCode }               from './types'
-import type { Network, ZkLoginSession, TransactionReceipt } from './types'
+import { Transaction }    from '@mysten/sui/transactions'
+import { SuiClient }      from '@mysten/sui/client'
+import { CONTRACTS, toBaseUnits, USDC_TYPE } from './config'
+import { ConkError, ConkErrorCode }          from './types'
+import type { Network }                      from './types'
 
 // ─── Constants (mirror stream.move) ──────────────────────────────────────────
 
 /** Payment types — must match PAYMENT_* constants in stream.move */
 export const STREAM_PAYMENT_TYPE = {
-  PER_VIEW:     0 as const,   // one-time access fee for full stream duration
-  PER_MINUTE:   1 as const,   // per-unit time pricing, billed at join
-  SUBSCRIPTION: 2 as const,   // access for active CONK subscription holders
+  PER_VIEW:     0 as const,
+  PER_MINUTE:   1 as const,
+  SUBSCRIPTION: 2 as const,
 } as const
 
-export type StreamPaymentType = typeof STREAM_PAYMENT_TYPE[keyof typeof STREAM_PAYMENT_TYPE]
+export type StreamPaymentType =
+  typeof STREAM_PAYMENT_TYPE[keyof typeof STREAM_PAYMENT_TYPE]
 
-/** Protocol fee to create a stream (USDC decimal) */
-export const STREAM_CREATE_FEE       = 0.05    // $0.05
-export const STREAM_CREATE_FEE_UNITS = 50_000  // microunits
+/** Protocol fee to create a stream: $0.05 (USDC microunits) */
+export const STREAM_CREATE_FEE       = 0.05
+export const STREAM_CREATE_FEE_UNITS = 50_000n
 
-/** Minimum session price (USDC decimal) */
+/** Minimum session price: $0.01 (USDC microunits) */
 export const STREAM_MIN_SESSION_FEE       = 0.01
-export const STREAM_MIN_SESSION_FEE_UNITS = 10_000
+export const STREAM_MIN_SESSION_FEE_UNITS = 10_000n
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Public types ─────────────────────────────────────────────────────────────
 
 export interface StreamCreateOptions {
-  /** USDC per viewer session in decimal (e.g. 0.10 = $0.10). Min $0.01. */
+  /** USDC per session in decimal (e.g. 0.10 = $0.10). Min $0.01. */
   pricePerSession: number
-  /** How long each session is valid, in seconds */
+  /** Session validity window in seconds after join */
   durationSeconds: number
   /** Payment model */
   paymentType: StreamPaymentType
 }
 
 export interface StreamResult {
-  /** On-chain Stream object ID */
-  id: string
-  /** Transaction digest from the create() call */
-  txDigest: string
-  /** Timestamp when the stream was created (ms) */
+  /** On-chain Stream (shared) object ID */
+  id:        string
+  txDigest:  string
   createdAt: number
 }
 
 export interface StreamSessionResult {
-  /** On-chain StreamSession object ID (owned by viewer) */
-  sessionId: string
-  /** Stream object ID this session belongs to */
-  streamId: string
-  /** Unix timestamp (ms) when session expires */
-  expiresAt: number
+  /** On-chain StreamSession (owned by viewer) object ID */
+  sessionId:  string
+  /** Stream object this session belongs to */
+  streamId:   string
+  /** Unix ms when this session expires */
+  expiresAt:  number
   /** USDC microunits paid */
-  paid: number
-  /** Transaction digest */
-  txDigest: string
+  paid:       number
+  txDigest:   string
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-async function splitUsdcCoin(
+async function getLargestUsdcCoin(
   suiClient: SuiClient,
-  tx:        Transaction,
   sender:    string,
-  amount:    bigint,
-): Promise<ReturnType<Transaction['splitCoins']>> {
-  const coins = await suiClient.getCoins({
-    owner:    sender,
-    coinType: USDC_COIN_TYPE,
-  })
-
-  if (!coins.data.length) {
-    throw new ConkError(
-      'No USDC coins found in wallet',
-      ConkErrorCode.INSUFFICIENT_BALANCE,
-    )
+  needed:    bigint,
+): Promise<string> {
+  const { data } = await suiClient.getCoins({ owner: sender, coinType: USDC_TYPE })
+  if (!data.length) {
+    throw new ConkError('No USDC coins found', ConkErrorCode.INSUFFICIENT_BALANCE, { sender })
   }
-
-  const sorted = [...coins.data].sort(
-    (a, b) => Number(BigInt(b.balance) - BigInt(a.balance)),
-  )
-  const coin = sorted.find(c => BigInt(c.balance) >= amount) ?? sorted[0]
-
-  return tx.splitCoins(tx.object(coin.coinObjectId), [tx.pure.u64(amount)])
+  const sorted = [...data].sort((a, b) => Number(BigInt(b.balance) - BigInt(a.balance)))
+  const coin   = sorted.find(c => BigInt(c.balance) >= needed) ?? sorted[0]
+  return coin.coinObjectId
 }
 
-function keypairFromSession(session: ZkLoginSession): Ed25519Keypair {
-  const raw = session.ephemeralKeyPair.privateKey
-  const bytes = raw.startsWith('0x')
-    ? Uint8Array.from(Buffer.from(raw.slice(2), 'hex'))
-    : Uint8Array.from(Buffer.from(raw, 'base64'))
-  return Ed25519Keypair.fromSecretKey(bytes)
-}
 
-async function executeWithSession(
-  suiClient: SuiClient,
-  session:   ZkLoginSession,
-  tx:        Transaction,
-  showObjectChanges = true,
-  showEvents        = false,
-) {
-  tx.setSender(session.address)
-
-  const keypair = keypairFromSession(session)
-  const { bytes, signature: ephemeralSig } = await tx.sign({
-    client: suiClient,
-    signer: keypair,
-  })
-
-  const { getZkLoginSignature } = await import('@mysten/sui/zklogin')
-  const zkSig = getZkLoginSignature({
-    inputs: {
-      proofPoints:      session.proof.proofPoints,
-      issBase64Details: session.proof.issBase64Details,
-      headerBase64:     session.proof.headerBase64,
-      addressSeed:      session.addressSeed ?? '',
-    },
-    maxEpoch:      session.maxEpoch,
-    userSignature: ephemeralSig,
-  })
-
-  return suiClient.executeTransactionBlock({
-    transactionBlock: bytes,
-    signature:        zkSig,
-    options: {
-      showEffects:       true,
-      showObjectChanges,
-      showEvents,
-    },
-  })
-}
 
 // ─── Stream class ─────────────────────────────────────────────────────────────
 
@@ -153,35 +115,34 @@ export class Stream {
     this.createdAt = result.createdAt
   }
 
-  // ─── Static: create a new Stream ──────────────────────────────────────────
+  // ─── create ───────────────────────────────────────────────────────────────
 
   /**
-   * Create a new Stream.
+   * Create a new Stream on-chain.
    *
    * Creator pays $0.05 to Abyss. The Stream becomes a shared object
-   * that any viewer can join. Set price, duration, and payment type.
+   * that any viewer can join via `Stream.join()`.
+   *
+   * @param signAndExecute  Caller-provided signing function. Accepts a Transaction
+   *   and returns `{ digest: string }`. Works with zkLogin, keypair, or wallet adapter.
    */
   static async create(
-    suiClient: SuiClient,
-    network:   Network,
-    session:   ZkLoginSession,
-    options:   StreamCreateOptions,
+    suiClient:      SuiClient,
+    network:        Network,
+    sender:         string,
+    options:        StreamCreateOptions,
+    signAndExecute: (tx: Transaction) => Promise<{ digest: string }>,
   ): Promise<Stream> {
-    const contracts = CONTRACTS[network]
-    const tx        = new Transaction()
-
-    const [feeCoin] = await splitUsdcCoin(
-      suiClient,
-      tx,
-      session.address,
-      BigInt(STREAM_CREATE_FEE_UNITS),
-    )
-
+    const contracts  = CONTRACTS[network]
     const priceUnits = toBaseUnits(options.pricePerSession)
     const durationMs = BigInt(options.durationSeconds * 1000)
+    const usdcCoin   = await getLargestUsdcCoin(suiClient, sender, STREAM_CREATE_FEE_UNITS)
+
+    const tx = new Transaction()
+    const [feeCoin] = tx.splitCoins(tx.object(usdcCoin), [tx.pure.u64(STREAM_CREATE_FEE_UNITS)])
 
     tx.moveCall({
-      target:    `${contracts.package}::stream::create`,
+      target: `${contracts.package}::stream::create`,
       arguments: [
         feeCoin,
         tx.object(contracts.abyss),
@@ -192,78 +153,72 @@ export class Stream {
       ],
     })
 
-    let txResult: Awaited<ReturnType<typeof executeWithSession>>
+    let digest: string
     try {
-      txResult = await executeWithSession(suiClient, session, tx, true, false)
+      ;({ digest } = await signAndExecute(tx))
     } catch (err) {
       throw new ConkError(
-        `Stream create transaction failed: ${(err as Error).message}`,
+        `stream::create failed: ${(err as Error).message}`,
         ConkErrorCode.TRANSACTION_FAILED,
         { error: err },
       )
     }
 
-    const streamChange = txResult.objectChanges?.find(
-      (c) =>
-        c.type === 'created' &&
-        (c as { objectType?: string }).objectType?.includes('::stream::Stream'),
+    // Fetch the shared Stream object from the tx effects
+    const result = await suiClient.getTransactionBlock({
+      digest,
+      options: { showObjectChanges: true },
+    })
+
+    const created = result.objectChanges?.find(
+      c => c.type === 'created' &&
+           (c as { objectType?: string }).objectType?.includes('::stream::Stream'),
     ) as { objectId?: string } | undefined
 
-    if (!streamChange?.objectId) {
+    if (!created?.objectId) {
       throw new ConkError(
-        'Could not locate Stream object in transaction output',
+        'Stream object not found in tx output',
         ConkErrorCode.TRANSACTION_FAILED,
-        { digest: txResult.digest },
+        { digest },
       )
     }
 
-    return new Stream({
-      id:        streamChange.objectId,
-      txDigest:  txResult.digest,
-      createdAt: Date.now(),
-    })
+    return new Stream({ id: created.objectId, txDigest: digest, createdAt: Date.now() })
   }
 
-  // ─── Static: join a Stream ────────────────────────────────────────────────
+  // ─── join ─────────────────────────────────────────────────────────────────
 
   /**
    * Join a live Stream as a viewer.
    *
-   * Pays price_per_session: 97% to creator immediately, 3% to protocol.
-   * Returns a StreamSession object — owned by viewer, expires after
-   * the stream's configured duration_ms.
+   * Pays `price_per_session`: 97% goes to creator immediately, 3% to Abyss.
+   * Returns a `StreamSessionResult` containing the owned StreamSession object ID.
+   * Call `Stream.verify(sessionId)` before serving any gated content.
    */
   static async join(
-    suiClient: SuiClient,
-    network:   Network,
-    session:   ZkLoginSession,
-    streamId:  string,
+    suiClient:      SuiClient,
+    network:        Network,
+    sender:         string,
+    streamId:       string,
+    signAndExecute: (tx: Transaction) => Promise<{ digest: string }>,
   ): Promise<StreamSessionResult> {
     const contracts = CONTRACTS[network]
-    const tx        = new Transaction()
 
-    // Fetch stream to know the session price and duration
-    const streamObj = await suiClient.getObject({
-      id:      streamId,
-      options: { showContent: true },
-    })
+    // Read stream state to get the session price
+    const streamObj = await suiClient.getObject({ id: streamId, options: { showContent: true } })
+    const fields    = (streamObj.data?.content as { fields?: Record<string, unknown> })?.fields
+    if (!fields) {
+      throw new ConkError('Could not read Stream object', ConkErrorCode.TRANSACTION_FAILED, { streamId })
+    }
+    const priceUnits = BigInt(fields.price_per_session as string | number)
+    const durationMs = Number(fields.duration_ms as string | number)
+    const usdcCoin   = await getLargestUsdcCoin(suiClient, sender, priceUnits)
 
-    const fields = (
-      streamObj.data?.content as { fields?: Record<string, unknown> }
-    )?.fields
-
-    const priceUnits = BigInt((fields?.price_per_session as string | number) ?? 0)
-    const durationMs = Number((fields?.duration_ms as string | number) ?? 0)
-
-    const [feeCoin] = await splitUsdcCoin(
-      suiClient,
-      tx,
-      session.address,
-      priceUnits,
-    )
+    const tx = new Transaction()
+    const [feeCoin] = tx.splitCoins(tx.object(usdcCoin), [tx.pure.u64(priceUnits)])
 
     tx.moveCall({
-      target:    `${contracts.package}::stream::join`,
+      target: `${contracts.package}::stream::join`,
       arguments: [
         tx.object(streamId),
         feeCoin,
@@ -272,118 +227,145 @@ export class Stream {
       ],
     })
 
-    let txResult: Awaited<ReturnType<typeof executeWithSession>>
+    let digest: string
     try {
-      txResult = await executeWithSession(suiClient, session, tx, true, true)
+      ;({ digest } = await signAndExecute(tx))
     } catch (err) {
       throw new ConkError(
-        `Stream join transaction failed: ${(err as Error).message}`,
+        `stream::join failed: ${(err as Error).message}`,
         ConkErrorCode.TRANSACTION_FAILED,
-        { error: err },
+        { error: err, streamId },
       )
     }
 
-    const sessionChange = txResult.objectChanges?.find(
-      (c) =>
-        c.type === 'created' &&
-        (c as { objectType?: string }).objectType?.includes('::stream::StreamSession'),
+    const result = await suiClient.getTransactionBlock({
+      digest,
+      options: { showObjectChanges: true, showEvents: true },
+    })
+
+    const sessionChange = result.objectChanges?.find(
+      c => c.type === 'created' &&
+           (c as { objectType?: string }).objectType?.includes('::stream::StreamSession'),
     ) as { objectId?: string } | undefined
 
-    const joinEvent = txResult.events?.find(
-      (e) => e.type?.includes('::stream::SessionJoined'),
-    )
-    const parsed = (joinEvent?.parsedJson ?? {}) as Record<string, unknown>
+    const joinEvent  = result.events?.find(e => e.type?.includes('::stream::SessionJoined'))
+    const eventData  = (joinEvent?.parsedJson ?? {}) as Record<string, unknown>
 
     return {
       sessionId: sessionChange?.objectId ?? '',
       streamId,
-      expiresAt: Number(parsed.expires_at ?? Date.now() + durationMs),
+      expiresAt: Number(eventData.expires_at ?? Date.now() + durationMs),
       paid:      Number(priceUnits),
-      txDigest:  txResult.digest,
+      txDigest:  digest,
     }
   }
 
-  // ─── Static: verify a session ─────────────────────────────────────────────
+  // ─── verify ───────────────────────────────────────────────────────────────
 
   /**
-   * Verify a viewer's StreamSession is still active.
+   * Check whether a viewer's StreamSession is still active.
    *
-   * Pure read — no transaction. Returns true if session has not expired.
-   * Call this before serving any gated video content.
+   * Pure client-side read — no transaction required.
+   * Returns false if the session has expired, been consumed, or does not exist.
    */
   static async verify(
     suiClient: SuiClient,
-    _network:  Network,
     sessionId: string,
   ): Promise<boolean> {
-    const sessionObj = await suiClient.getObject({
-      id:      sessionId,
-      options: { showContent: true },
-    })
-
-    const fields = (
-      sessionObj.data?.content as { fields?: Record<string, unknown> }
-    )?.fields
-
-    if (!fields) return false
-
-    const expiresAt = Number(fields.expires_at ?? 0)
-    return Date.now() < expiresAt
+    try {
+      const obj    = await suiClient.getObject({ id: sessionId, options: { showContent: true } })
+      const fields = (obj.data?.content as { fields?: Record<string, unknown> })?.fields
+      if (!fields) return false
+      return Date.now() < Number(fields.expires_at ?? 0)
+    } catch {
+      return false
+    }
   }
 
-  // ─── Static: end a Stream ─────────────────────────────────────────────────
+  // ─── end ──────────────────────────────────────────────────────────────────
 
   /**
-   * End a Stream.
+   * End a Stream (creator only).
    *
-   * Only the creator may call this. Sets state to CLOSED and emits
-   * StreamEnded with lifetime totals. Pass vodChestId to link the
-   * VOD recording so viewers can find and access the replay.
+   * Sets state to CLOSED. Emits StreamEnded with lifetime earnings and
+   * session count. Optionally links a VOD Chest ID so viewers can find
+   * the replay after the live session closes.
+   *
+   * @param options.vodChestId  Optional Chest object ID for VOD replay.
    */
   static async end(
-    suiClient: SuiClient,
-    network:   Network,
-    session:   ZkLoginSession,
-    streamId:  string,
-    options?:  { vodChestId?: string },
-  ): Promise<TransactionReceipt> {
+    suiClient:      SuiClient,
+    network:        Network,
+    _sender:        string,
+    streamId:       string,
+    signAndExecute: (tx: Transaction) => Promise<{ digest: string }>,
+    options?:       { vodChestId?: string },
+  ): Promise<{ txDigest: string }> {
     const contracts = CONTRACTS[network]
-    const tx        = new Transaction()
 
-    // Encode Option<ID> — Move BCS: 0x00 = None, 0x01 ++ bytes = Some(id)
-    const vodOptionBytes = options?.vodChestId
-      ? new Uint8Array([
-          1,
-          ...Buffer.from(options.vodChestId.replace('0x', '').padStart(64, '0'), 'hex'),
-        ])
-      : new Uint8Array([0])
-
+    const tx = new Transaction()
     tx.moveCall({
-      target:    `${contracts.package}::stream::end`,
+      target: `${contracts.package}::stream::end`,
       arguments: [
         tx.object(streamId),
-        tx.pure(vodOptionBytes),
+        tx.pure.option('id', options?.vodChestId ?? null),
         tx.object(contracts.clock),
       ],
     })
 
-    let txResult: Awaited<ReturnType<typeof executeWithSession>>
+    let digest: string
     try {
-      txResult = await executeWithSession(suiClient, session, tx, false, false)
+      ;({ digest } = await signAndExecute(tx))
     } catch (err) {
       throw new ConkError(
-        `Stream end transaction failed: ${(err as Error).message}`,
+        `stream::end failed: ${(err as Error).message}`,
         ConkErrorCode.TRANSACTION_FAILED,
-        { error: err },
+        { error: err, streamId },
       )
     }
 
+    return { txDigest: digest }
+  }
+
+  // ─── fetchState ───────────────────────────────────────────────────────────
+
+  /**
+   * Fetch live state of a Stream object.
+   *
+   * Returns creator, price, duration, payment model, earnings, and
+   * session count. Useful for building stream discovery UIs or daemon
+   * intelligence reports.
+   */
+  static async fetchState(
+    suiClient: SuiClient,
+    streamId:  string,
+  ): Promise<{
+    id:               string
+    creator:          string
+    pricePerSession:  number   // USDC decimal
+    durationSeconds:  number
+    paymentType:      StreamPaymentType
+    isLive:           boolean
+    totalEarned:      number   // USDC decimal
+    sessionCount:     number
+    createdAt:        number   // Unix ms
+  }> {
+    const obj    = await suiClient.getObject({ id: streamId, options: { showContent: true } })
+    const fields = (obj.data?.content as { fields?: Record<string, unknown> })?.fields
+    if (!fields) {
+      throw new ConkError('Could not read Stream state', ConkErrorCode.TRANSACTION_FAILED, { streamId })
+    }
+
     return {
-      txDigest:     txResult.digest,
-      castId:       streamId,
-      amount:       0,
-      timestamp:    Date.now(),
-      buyerAddress: session.address,
+      id:              streamId,
+      creator:         fields.creator as string,
+      pricePerSession: Number(fields.price_per_session) / 1_000_000,
+      durationSeconds: Number(fields.duration_ms) / 1000,
+      paymentType:     Number(fields.payment_type) as StreamPaymentType,
+      isLive:          Number(fields.state) === 0,
+      totalEarned:     Number(fields.total_earned) / 1_000_000,
+      sessionCount:    Number(fields.session_count),
+      createdAt:       Number(fields.created_at),
     }
   }
 }
