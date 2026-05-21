@@ -137,9 +137,3 @@ export type { RoyaltyRecipient, RoyaltySplit, RoyaltyPayment } from './Royalties
 
 export { SubscriptionClient, INTERVAL_MS, INTERVAL_LABEL } from './Subscription'
 export type { SubscriptionInterval, SubscribeOptions, SubscriptionResult, SubscriptionRecord } from './Subscription'
-
-// ─── v11: Reputation + Registry ───────────────────────────────────────────────
-export type { VesselReputation } from './Vessel'
-export { isLighthouse, getLighthouseEntry } from './LighthouseRegistry'
-export type { LighthouseEntry } from './LighthouseRegistry'
-export { CONK_PACKAGE_ID, PROTOCOL_CONFIG_ID, LIGHTHOUSE_REGISTRY_ID } from './config'

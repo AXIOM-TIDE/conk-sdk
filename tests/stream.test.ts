@@ -19,6 +19,7 @@ import { ConkError, ConkErrorCode } from '../src/types'
 // ─── Shared mocks ─────────────────────────────────────────────────────────────
 
 const MOCK_STREAM_ID  = '0xaabbccdd0000000000000000000000000000000000000000000000000000aaaa'
+const MOCK_VESSEL_ID  = '0xdeadbeef000000000000000000000000000000000000000000000000beefcafe'
 const MOCK_SESSION_ID = '0x1234567800000000000000000000000000000000000000000000000000001234'
 const MOCK_DIGEST     = 'MockTxDigest1234567890abcdef'
 const MOCK_SENDER     = '0xdeadbeef000000000000000000000000000000000000000000000000deadbeef'
@@ -107,7 +108,7 @@ describe('Stream.create', () => {
       client,
       'mainnet',
       MOCK_SENDER,
-      { pricePerSession: 0.10, durationSeconds: 3600, paymentType: STREAM_PAYMENT_TYPE.PER_VIEW },
+      { pricePerSession: 0.10, durationSeconds: 3600, paymentType: STREAM_PAYMENT_TYPE.PER_VIEW, vesselId: MOCK_VESSEL_ID },
       signAndExec,
     )
 
@@ -129,7 +130,7 @@ describe('Stream.create', () => {
 
     await Stream.create(
       client, 'mainnet', MOCK_SENDER,
-      { pricePerSession: 0.10, durationSeconds: 3600, paymentType: STREAM_PAYMENT_TYPE.PER_VIEW },
+      { pricePerSession: 0.10, durationSeconds: 3600, paymentType: STREAM_PAYMENT_TYPE.PER_VIEW, vesselId: MOCK_VESSEL_ID },
       captureSign,
     )
 
@@ -146,7 +147,7 @@ describe('Stream.create', () => {
     await expect(
       Stream.create(
         client, 'mainnet', MOCK_SENDER,
-        { pricePerSession: 0.10, durationSeconds: 3600, paymentType: STREAM_PAYMENT_TYPE.PER_VIEW },
+        { pricePerSession: 0.10, durationSeconds: 3600, paymentType: STREAM_PAYMENT_TYPE.PER_VIEW, vesselId: MOCK_VESSEL_ID },
         makeSignAndExecute(),
       ),
     ).rejects.toThrow(ConkError)
@@ -159,7 +160,7 @@ describe('Stream.create', () => {
     await expect(
       Stream.create(
         client, 'mainnet', MOCK_SENDER,
-        { pricePerSession: 0.10, durationSeconds: 3600, paymentType: STREAM_PAYMENT_TYPE.PER_VIEW },
+        { pricePerSession: 0.10, durationSeconds: 3600, paymentType: STREAM_PAYMENT_TYPE.PER_VIEW, vesselId: MOCK_VESSEL_ID },
         failSign,
       ),
     ).rejects.toThrow('stream::create failed')
@@ -173,7 +174,7 @@ describe('Stream.create', () => {
     await expect(
       Stream.create(
         client, 'mainnet', MOCK_SENDER,
-        { pricePerSession: 0.10, durationSeconds: 3600, paymentType: STREAM_PAYMENT_TYPE.PER_VIEW },
+        { pricePerSession: 0.10, durationSeconds: 3600, paymentType: STREAM_PAYMENT_TYPE.PER_VIEW, vesselId: MOCK_VESSEL_ID },
         makeSignAndExecute(),
       ),
     ).rejects.toThrow('Stream object not found')

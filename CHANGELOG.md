@@ -80,11 +80,54 @@ All IDs are overrideable via environment variables:
 - `Cast.read()` accepts an optional `session?: ZkLoginSession` parameter (6th arg) for USDC coin selection and reader address. `Vessel.read()` forwards the vessel's session automatically — no consumer API change.
 - `USDC_TYPE` is now re-exported from `config.ts` and used internally for coin queries.
 
+## [0.6.0] — 2026-05-21 — CONK v11 Compatibility
+
+> Deploy tx: `FzZPXnyBKqFitg5KU5cApHjx8G75dexk9vdnBewen8dL`
+
+### v11 Contract Addresses (mainnet)
+
+| Object | ID |
+|---|---|
+| Package | `0x734b19fa1696dec30f8cae38f1cdbf0ab5a12720735f7c7b0d4935cab31732cc` |
+| Abyss | `0x075c8667d1780bdde01a8175cd458aa345b3f6e2a84c45b91f82b344a4325bd0` |
+| Drift | `0x9312b6837bb12381849b413636064cd8d56b6ef84bf891b3f756b3cbb6157fad` |
+| ProtocolConfig *(new)* | `0xdc8e5131d6e3bec492a2e12b1d7beddbfec709ae5def8e775dab59c7a45421ea` |
+| LighthouseRegistry *(new)* | `0x5ee0f0a6ad1b89412a2e05def4f1e0ad6e606df3751c030e9601fd155b444e94` |
+
+### Breaking Changes
+
+- **`Cast.publish()` / `cast::sound` PTB** — `vessel_id: ID` + `vessel_tier: u8` replaced by `&mut Vessel` + `&VesselCap` object references (args [2] and [3]). The contract now derives identity and tier from the on-chain object directly. `Cast.publish()` gains a required 7th parameter `vesselCapId: string`. All callers via `Vessel.publish()` are handled automatically once the Vessel carries `capObjectId`.
+
+- **`Cast.read()` / `cast::read` PTB** — `ProtocolConfig` shared object added at argument position [3]. New call signature: `(cast, fee_coin, abyss, config, reader, clock)`. No consumer API change — `PROTOCOL_CONFIG_ID` is injected automatically.
+
+- **`lighthouse::raise` PTB** — The Beacon publish flow now sends a second transaction to register each Lighthouse in the `LighthouseRegistry`. `Beacon.publish()` calls `vessel.raiseToLighthouse(castId)` after every successful cast. Old raw-ID params replaced by `&mut Cast`, `&mut Vessel`, `&VesselCap`, `&mut LighthouseRegistry`, `&Drift`, `&Clock`.
+
+- **`Stream.create()` / `stream::create` PTB** — `vesselId` added to `StreamCreateOptions` and inserted as arg [2] in the PTB. Streams are now attributed to a Vessel identity. **Existing callers must add `vesselId` to `StreamCreateOptions`.**
+
+### Added
+
+- **`CONK_PACKAGE_ID`** — exported constant for the v11 package address. Overridable via `CONK_PACKAGE_ID` env var. Hardcoded default is the mainnet v11 deploy address.
+- **`PROTOCOL_CONFIG_ID`** — exported constant for the v11 `ProtocolConfig` shared object. Overridable via `CONK_PROTOCOL_CONFIG_ID` env var.
+- **`LIGHTHOUSE_REGISTRY_ID`** — exported constant for the v11 `LighthouseRegistry` shared object. Overridable via `CONK_LIGHTHOUSE_REGISTRY_ID` env var.
+- **`PENDING_V11_DEPLOY`** — sentinel string value for unconfigured deployments.
+- **`Vessel.raiseToLighthouse(castId, registryId?)`** — builds and executes `lighthouse::raise` PTB. Registers a published Cast in the on-chain LighthouseRegistry.
+- **`Vessel.capObjectId()`** — accessor for the `VesselCap` object ID stored in `VesselState`.
+- **`Vessel.create()`** now captures the `VesselCap` object ID from tx object changes and stores it in `VesselState.capObjectId`.
+- **`VesselState.capObjectId?`** — new optional field on the `VesselState` interface.
+- **`getVesselReputation(suiClient, vesselId, network?)`** — new function. Reads the `vessel::Reputation` dynamic field and returns cast count, unique readers, total earned, read count, trust score, and last activity timestamp. Returns `null` for vessels with no record yet.
+- **`getVesselReputations(suiClient, vesselIds[], network?)`** — batch variant; fetches in parallel and returns a `Map<string, VesselReputation | null>`.
+- **`isLighthouse(suiClient, castId, registryId?)`** — returns `true` if the given Cast has been raised into the `LighthouseRegistry`.
+- **`getLighthouseEntry(suiClient, castId, registryId?)`** — returns the full `LighthouseEntry` from the registry (beacon ID, price, media type, category, blob ID, tags, raisedAt), or `null` if not found.
+
+### Changed
+
+- `CONTRACTS` object is no longer `as const` — the `package` field is now dynamically populated from `CONK_PACKAGE_ID` at module load time.
+- `CONTRACTS.mainnet.abyss` and `CONTRACTS.mainnet.drift` updated to v11 addresses.
+
 ## [Unreleased]
 
 ### Planned
 - zkLogin signing wired into ConkClient
-- Move call targets verified against CONK mainnet contracts
 - Integration test suite (devnet)
 - CI/CD pipeline via GitHub Actions
 
