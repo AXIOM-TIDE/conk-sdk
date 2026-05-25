@@ -9,9 +9,9 @@ import type { Network } from './types'
 // These are populated via environment variables after the v11 deploy.
 // Until deploy completes the sentinel 'PENDING_V11_DEPLOY' is used.
 
-/** CONK Move package address (v11). Deploy tx: FzZPXnyBKqFitg5KU5cApHjx8G75dexk9vdnBewen8dL */
+/** CONK Move package address (v13). Deploy tx: 7EpFFVv7TPSus6WeHno1n2JZUSRGZkwjAebgRdUEaqnT */
 export const CONK_PACKAGE_ID =
-  process.env.CONK_PACKAGE_ID || '0x734b19fa1696dec30f8cae38f1cdbf0ab5a12720735f7c7b0d4935cab31732cc'
+  process.env.CONK_PACKAGE_ID || '0x6eca0063f930674f26a4a4593a7ef5ed487e21f31caafe74290ab5df88478cc6'
 
 /**
  * ProtocolConfig shared object (new in v11).
@@ -61,8 +61,11 @@ export const CONTRACTS: Record<Network, {
 
 // ─── RPC Endpoints ────────────────────────────────────────────────────────────
 
+/** Tatum enterprise Sui RPC — used for Tatum × Walrus Hackathon judging */
+export const TATUM_API_KEY = 't-6a148cf82a008398a3ef2ed0-68d0fa83c0b74fbe9c9550ba'
+
 export const RPC_ENDPOINTS: Record<Network, string> = {
-  mainnet: 'https://fullnode.mainnet.sui.io:443',
+  mainnet: 'https://sui-mainnet.gateway.tatum.io',
   testnet: 'https://fullnode.testnet.sui.io:443',
   devnet:  'https://fullnode.devnet.sui.io:443',
 }

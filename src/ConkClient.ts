@@ -7,12 +7,12 @@
  *   2. Private key      — for daemons / Agent Spark workers
  */
 
-import { SuiClient, getFullnodeUrl }   from '@mysten/sui/client'
+import { SuiClient, SuiHTTPTransport, getFullnodeUrl } from '@mysten/sui/client'
 import { Ed25519Keypair }              from '@mysten/sui/keypairs/ed25519'
 import { Transaction }                 from '@mysten/sui/transactions'
 import { Harbor }                      from './Harbor'
 import { Attachments }                 from './Attachments'
-import { DEFAULT_PROXY, RPC_ENDPOINTS } from './config'
+import { DEFAULT_PROXY, RPC_ENDPOINTS, TATUM_API_KEY } from './config'
 import { ConkError, ConkErrorCode }    from './types'
 import type {
   ConkClientConfig,
@@ -34,8 +34,13 @@ export class ConkClient {
     this.network  = config.network ?? 'mainnet'
     this.proxyUrl = config.proxy   ?? DEFAULT_PROXY
 
+    const rpcUrl = RPC_ENDPOINTS[this.network] ?? getFullnodeUrl(this.network)
     this.suiClient = new SuiClient({
-      url: RPC_ENDPOINTS[this.network] ?? getFullnodeUrl(this.network),
+      transport: new SuiHTTPTransport({
+        url: rpcUrl,
+        // Tatum enterprise RPC requires x-api-key on mainnet
+        rpc: { headers: this.network === 'mainnet' ? { 'x-api-key': TATUM_API_KEY } : {} },
+      }),
     })
 
     this.attachments = new Attachments()
