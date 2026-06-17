@@ -61,8 +61,8 @@ export const CONTRACTS: Record<Network, {
 
 // ─── RPC Endpoints ────────────────────────────────────────────────────────────
 
-/** Tatum enterprise Sui RPC — used for Tatum × Walrus Hackathon judging */
-export const TATUM_API_KEY = 't-6a148cf82a008398a3ef2ed0-68d0fa83c0b74fbe9c9550ba'
+/** Tatum enterprise Sui RPC — set TATUM_API_KEY env var; key intentionally removed from source */
+export const TATUM_API_KEY = process.env.TATUM_API_KEY ?? ''
 
 export const RPC_ENDPOINTS: Record<Network, string> = {
   mainnet: 'https://sui-mainnet.gateway.tatum.io',
