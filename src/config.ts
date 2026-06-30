@@ -1,6 +1,6 @@
 /**
  * @axiomtide/conk-sdk — Protocol Configuration
- * Synced with CONK v11 protocol.
+ * Synced with CONK v14 — June 30, 2026.
  */
 
 import type { Network } from './types'
@@ -9,9 +9,9 @@ import type { Network } from './types'
 // These are populated via environment variables after the v11 deploy.
 // Until deploy completes the sentinel 'PENDING_V11_DEPLOY' is used.
 
-/** CONK Move package address (v13). Deploy tx: 7EpFFVv7TPSus6WeHno1n2JZUSRGZkwjAebgRdUEaqnT */
+/** CONK Move package address (v14). Deploy tx: 22vyMUoZVY1HuV3gpwSVD8JkxXkX8S8iFLb39vUUsLW3 */
 export const CONK_PACKAGE_ID =
-  process.env.CONK_PACKAGE_ID || '0x6eca0063f930674f26a4a4593a7ef5ed487e21f31caafe74290ab5df88478cc6'
+  process.env.CONK_PACKAGE_ID || '0x265ec216d95c6109f92d90e310da4cfb0c123efa1c00540d8ced4e0d37392297'
 
 /**
  * ProtocolConfig shared object (new in v11).
@@ -37,7 +37,7 @@ export const CONTRACTS: Record<Network, {
   clock:    string
 }> = {
   mainnet: {
-    package:  CONK_PACKAGE_ID,  // v11 — deploy tx FzZPXnyBKqFitg5KU5cApHjx8G75dexk9vdnBewen8dL
+    package:  CONK_PACKAGE_ID,  // v14 — deploy tx 22vyMUoZVY1HuV3gpwSVD8JkxXkX8S8iFLb39vUUsLW3
     treasury: '0xe0117fba317d2267b8d90adca1fe79eceeec756bcf54edf04cc29ee5306ab32e',
     abyss:    '0x075c8667d1780bdde01a8175cd458aa345b3f6e2a84c45b91f82b344a4325bd0',  // v11
     drift:    '0x9312b6837bb12381849b413636064cd8d56b6ef84bf891b3f756b3cbb6157fad',  // v11
